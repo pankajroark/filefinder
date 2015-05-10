@@ -148,7 +148,7 @@ func rank(cands []string, fuzz string) []string {
 	sort.Sort(ByScore(candscores))
 	ret := make([]string, 0)
 	for _, cs := range candscores {
-		fmt.Println(cs)
+		//fmt.Println(cs)
 		ret = append(ret, cs.cand)
 	}
 	return ret
@@ -167,7 +167,7 @@ type server struct {
 }
 
 func (s *server) initIndex() {
-	s.idx = index("/Users/pankajg/workspace/source/science/src")
+	s.idx = index("/Users/pankajg/workspace/source/science")
 }
 
 func (s *server) findMatches(word string) []string {
@@ -188,6 +188,7 @@ func createQueryHandler(s *server) http.HandlerFunc {
 }
 
 func main() {
+	// todo - referesh index periodically
 	serv := server{}
 	serv.initIndex()
 
