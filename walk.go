@@ -88,6 +88,7 @@ func (a ByScore) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByScore) Less(i, j int) bool { return a[i].score < a[j].score }
 
 func index(path string) map[string][]string {
+	fmt.Printf("scanning %s\n", path)
 	idx := make(map[string][]string)
 	index_path := func(path string) {
 		base := filepath.Base(path)
@@ -166,8 +167,26 @@ type server struct {
 	idx map[string][]string
 }
 
+func mergeIndices(idx1, idx2 map[string][]string) map[string][]string {
+	indices := make([]map[string][]string, 0)
+	indices = append(indices, idx1)
+	indices = append(indices, idx2)
+
+	newIdx := make(map[string][]string)
+	for _, idx := range indices {
+		for trigram, paths := range idx {
+			for _, path := range paths {
+				newIdx[trigram] = append(newIdx[trigram], path)
+			}
+		}
+	}
+	return newIdx
+}
+
 func (s *server) initIndex() {
-	s.idx = index("/Users/pankajg/workspace/source/science")
+	sidx := index("/Users/pankajg/workspace/source/science")
+	bidx := index("/Users/pankajg/workspace/source/birdcage")
+	s.idx = mergeIndices(sidx, bidx)
 }
 
 func (s *server) findMatches(word string) []string {
@@ -192,7 +211,7 @@ func main() {
 	serv := server{}
 	serv.initIndex()
 
-	port := flag.String("port", "10120", "port on which to run the wiki")
+	port := flag.String("port", "10121", "port on which to run the wiki")
 	flag.Parse()
 	app := "pathfinder"
 	fmt.Printf("starting up %s on port %s ...", app, *port)
