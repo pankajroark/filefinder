@@ -164,7 +164,8 @@ func uptoN(slice []string, n int) []string {
 }
 
 type server struct {
-	idx map[string][]string
+	idx   map[string][]string
+	roots []string
 }
 
 func mergeIndices(idx1, idx2 map[string][]string) map[string][]string {
@@ -183,10 +184,21 @@ func mergeIndices(idx1, idx2 map[string][]string) map[string][]string {
 	return newIdx
 }
 
-func (s *server) initIndex() {
-	sidx := index("/Users/pankajg/workspace/source/science")
-	bidx := index("/Users/pankajg/workspace/source/birdcage")
-	s.idx = mergeIndices(sidx, bidx)
+func (s *server) init() {
+	s.roots = make([]string, 0)
+	s.roots = append(s.roots, "/Users/pankajg/workspace/source/science")
+	s.roots = append(s.roots, "/Users/pankajg/workspace/source/birdcage")
+	s.index()
+}
+
+func (s *server) index() {
+	fmt.Printf("indexing %s\n", s.roots[0])
+	s.idx = index(s.roots[0])
+	for i := 1; i < len(s.roots); i++ {
+		fmt.Printf("indexing %s\n", s.roots[i])
+		newIdx := index(s.roots[i])
+		s.idx = mergeIndices(s.idx, newIdx)
+	}
 }
 
 func (s *server) findMatches(word string) []string {
@@ -196,7 +208,7 @@ func (s *server) findMatches(word string) []string {
 
 func createQueryHandler(s *server) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		word := r.URL.Path[1:]
+		word := r.URL.Query().Get("word")
 
 		//fmt.Println(candidates)
 		for _, result := range s.findMatches(word) {
@@ -206,15 +218,34 @@ func createQueryHandler(s *server) http.HandlerFunc {
 	}
 }
 
+func createIndexHander(s *server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.index()
+		fmt.Fprintln(w, "Indexing done!")
+	}
+}
+
+func createAddRootHandler(s *server) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		root := r.URL.Query().Get("root")
+		// todo validate root, path must exist on disk
+		s.roots = append(s.roots, root)
+		s.index()
+		fmt.Fprintf(w, "Added root %s\n", root)
+	}
+}
+
 func main() {
 	// todo - referesh index periodically
 	serv := server{}
-	serv.initIndex()
+	serv.init()
 
 	port := flag.String("port", "10121", "port on which to run the wiki")
 	flag.Parse()
 	app := "pathfinder"
-	fmt.Printf("starting up %s on port %s ...", app, *port)
-	http.HandleFunc("/", createQueryHandler(&serv))
+	fmt.Printf("starting up %s on port %s ...\n", app, *port)
+	http.HandleFunc("/query", createQueryHandler(&serv))
+	http.HandleFunc("/index", createIndexHander(&serv))
+	http.HandleFunc("/addroot", createAddRootHandler(&serv))
 	log.Fatal(http.ListenAndServe(":"+*port, nil))
 }
