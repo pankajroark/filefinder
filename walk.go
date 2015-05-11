@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -10,6 +13,8 @@ import (
 	"sort"
 	"strings"
 )
+
+const indexpath = "/Users/pankajg/.pathsearchindex"
 
 func WeighedDistance(s, t string) int {
 	substitutionCost := 21
@@ -184,11 +189,43 @@ func mergeIndices(idx1, idx2 map[string][]string) map[string][]string {
 	return newIdx
 }
 
+func (s *server) storeIndex() {
+	b := new(bytes.Buffer)
+	e := gob.NewEncoder(b)
+	err := e.Encode(s.idx)
+	if err != nil {
+		log.Fatal("failed to encode index")
+	}
+	ioutil.WriteFile(indexpath, b.Bytes(), 0644)
+}
+
+func (s *server) readIndex() error {
+	fmt.Println("Reading Index...")
+	_, cerr := os.Stat(indexpath)
+	if cerr != nil {
+		fmt.Println("Index does not exist.")
+		return cerr
+	}
+	var decodedIdx map[string][]string
+	bs, err := ioutil.ReadFile(indexpath)
+	if err != nil {
+		log.Fatal("failed to decode index")
+		return err
+	}
+	d := gob.NewDecoder(bytes.NewBuffer(bs))
+	d.Decode(&decodedIdx)
+	s.idx = decodedIdx
+	return nil
+}
+
 func (s *server) init() {
 	s.roots = make([]string, 0)
 	s.roots = append(s.roots, "/Users/pankajg/workspace/source/science")
 	s.roots = append(s.roots, "/Users/pankajg/workspace/source/birdcage")
-	s.index()
+	err := s.readIndex()
+	if err != nil {
+		s.index()
+	}
 }
 
 func (s *server) index() {
@@ -199,6 +236,7 @@ func (s *server) index() {
 		newIdx := index(s.roots[i])
 		s.idx = mergeIndices(s.idx, newIdx)
 	}
+	s.storeIndex()
 }
 
 func (s *server) findMatches(word string) []string {
