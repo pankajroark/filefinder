@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-const indexpath = "/Users/pankajg/.pathsearchindex"
+const IndexPath = "/Users/pankajg/.pathsearchindex"
 
 type candscor struct {
 	cand  string
@@ -54,18 +54,18 @@ func (s *Server) StoreIndex() {
 	if err != nil {
 		log.Fatal("failed to encode index")
 	}
-	ioutil.WriteFile(indexpath, b.Bytes(), 0644)
+	ioutil.WriteFile(IndexPath, b.Bytes(), 0644)
 }
 
 func (s *Server) ReadIndex() error {
 	fmt.Println("Reading Index...")
-	_, cerr := os.Stat(indexpath)
+	_, cerr := os.Stat(IndexPath)
 	if cerr != nil {
 		fmt.Println("Index does not exist.")
 		return cerr
 	}
 	var decodedIdx map[string][]string
-	bs, err := ioutil.ReadFile(indexpath)
+	bs, err := ioutil.ReadFile(IndexPath)
 	if err != nil {
 		log.Fatal("failed to decode index")
 		return err
