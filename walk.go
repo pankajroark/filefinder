@@ -15,7 +15,7 @@ func main() {
 
 	port := flag.String("port", "10121", "port on which to run the wiki")
 	flag.Parse()
-	app := "pathfinder"
+	app := "pathsearch"
 	fmt.Printf("starting up %s on port %s ...\n", app, *port)
 	http.HandleFunc("/query", lib.CreateQueryHandler(&serv))
 	http.HandleFunc("/index", lib.CreateIndexHander(&serv))
