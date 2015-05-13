@@ -14,6 +14,7 @@ import (
 )
 
 const IndexPath = "/Users/pankajg/.pathsearchindex"
+const StringidsPath = "/Users/pankajg/.pathstringids"
 
 type candscor struct {
 	cand  string
@@ -27,16 +28,17 @@ func (a ByScore) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByScore) Less(i, j int) bool { return a[i].score < a[j].score }
 
 type Server struct {
-	idx   map[string][]string
-	roots []string
+	idx       map[string][]uint32
+	roots     []string
+	stringids *Stringids
 }
 
-func mergeIndices(idx1, idx2 map[string][]string) map[string][]string {
-	indices := make([]map[string][]string, 0)
+func mergeIndices(idx1, idx2 map[string][]uint32) map[string][]uint32 {
+	indices := make([]map[string][]uint32, 0)
 	indices = append(indices, idx1)
 	indices = append(indices, idx2)
 
-	newIdx := make(map[string][]string)
+	newIdx := make(map[string][]uint32)
 	for _, idx := range indices {
 		for trigram, paths := range idx {
 			for _, path := range paths {
@@ -64,7 +66,7 @@ func (s *Server) ReadIndex() error {
 		fmt.Println("Index does not exist.")
 		return cerr
 	}
-	var decodedIdx map[string][]string
+	var decodedIdx map[string][]uint32
 	bs, err := ioutil.ReadFile(IndexPath)
 	if err != nil {
 		log.Fatal("failed to decode index")
@@ -81,6 +83,7 @@ func (s *Server) Init() {
 	s.roots = append(s.roots, "/Users/pankajg/workspace/source/science")
 	s.roots = append(s.roots, "/Users/pankajg/workspace/source/birdcage")
 	err := s.ReadIndex()
+	s.stringids = NewStringids(StringidsPath)
 	if err != nil {
 		s.Index()
 	}
@@ -88,27 +91,50 @@ func (s *Server) Init() {
 
 func (s *Server) Index() {
 	fmt.Printf("indexing %s\n", s.roots[0])
-	s.idx = index(s.roots[0])
+	s.idx = s.index(s.roots[0])
 	for i := 1; i < len(s.roots); i++ {
 		fmt.Printf("indexing %s\n", s.roots[i])
-		newIdx := index(s.roots[i])
+		newIdx := s.index(s.roots[i])
 		s.idx = mergeIndices(s.idx, newIdx)
 	}
 	s.StoreIndex()
 }
 
+func (s *Server) index(path string) map[string][]uint32 {
+	fmt.Printf("scanning %s\n", path)
+	idx := make(map[string][]uint32)
+	index_path := func(path string) {
+		pathId := s.stringids.Add(path)
+		base := filepath.Base(path)
+		for i := 0; i < len(base)-2; i++ {
+			trigram := strings.ToLower(base[i : i+3])
+			idx[trigram] = append(idx[trigram], pathId)
+		}
+	}
+
+	walkFn := func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() && filepath.Ext(path) != ".class" {
+			index_path(path)
+		}
+		return err
+	}
+
+	filepath.Walk(path, walkFn)
+	return idx
+}
+
 func (s *Server) FindMatches(word string) []string {
-	candidates := findCandidates(word, s.idx)
+	candidates := s.findCandidates(word, s.idx)
 	return uptoN(rank(candidates, word), 10)
 }
 
-func findCandidates(fuzz string, idx map[string][]string) []string {
-	candsSeen := make(map[string]int)
+func (s *Server) findCandidates(fuzz string, idx map[string][]uint32) []string {
+	candsSeen := make(map[uint32]int)
 	for i := 0; i < len(fuzz)-2; i++ {
 		trigram := strings.ToLower(fuzz[i : i+3])
-		paths := idx[trigram]
-		for _, path := range paths {
-			candsSeen[path]++
+		pathIds := idx[trigram]
+		for _, pathId := range pathIds {
+			candsSeen[pathId]++
 		}
 	}
 
@@ -116,7 +142,7 @@ func findCandidates(fuzz string, idx map[string][]string) []string {
 	cands := make([]string, 0)
 	for cand, count := range candsSeen {
 		if count > 2 {
-			cands = append(cands, cand)
+			cands = append(cands, s.stringids.StrAtOffset(cand))
 		}
 	}
 	return cands
@@ -154,28 +180,6 @@ func uptoN(slice []string, n int) []string {
 	} else {
 		return slice
 	}
-}
-
-func index(path string) map[string][]string {
-	fmt.Printf("scanning %s\n", path)
-	idx := make(map[string][]string)
-	index_path := func(path string) {
-		base := filepath.Base(path)
-		for i := 0; i < len(base)-2; i++ {
-			trigram := strings.ToLower(base[i : i+3])
-			idx[trigram] = append(idx[trigram], path)
-		}
-	}
-
-	walkFn := func(path string, info os.FileInfo, err error) error {
-		if !info.IsDir() && filepath.Ext(path) != ".class" {
-			index_path(path)
-		}
-		return err
-	}
-
-	filepath.Walk(path, walkFn)
-	return idx
 }
 
 func CreateQueryHandler(s *Server) http.HandlerFunc {
