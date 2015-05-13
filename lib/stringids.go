@@ -72,15 +72,32 @@ func NewStringids(path string) *Stringids {
 	}
 	walSize := uint32(fi.Size())
 	offsetTable := NewOffsetTable(1024)
-	return &Stringids{indexPath: path, wal: wal, walSize: walSize, offsetTable: offsetTable}
+	strids := &Stringids{indexPath: path, wal: wal, walSize: walSize, offsetTable: offsetTable}
+	// todo read wal here
+	strids.loadOffsetTableFromWal()
+	return strids
+}
 
+func (s *Stringids) loadOffsetTableFromWal() {
+	fmt.Println("Reading WAL...")
+	var offset uint32
+	offset = 0
+	for {
+		str, e := s.StrAtOffset(offset)
+		if e != nil {
+			break
+		}
+		s.storeOffset(str, offset)
+		offset += uint32(len(str) + 2)
+	}
+	fmt.Println("Finished reading WAL...")
 }
 
 func (s *Stringids) rehash() {
 	fmt.Println("rehashing...")
 	nt := NewOffsetTable(2 * s.offsetTable.capacity())
 	anon := func(offset uint32) {
-		str := s.StrAtOffset(offset)
+		str, _ := s.StrAtOffset(offset)
 		h := s.hash(str)
 		nt.put(h, offset)
 	}
@@ -118,36 +135,42 @@ func (s *Stringids) writeToWal(str string) uint32 {
 	return offset
 }
 
+func (s *Stringids) storeOffset(str string, offset uint32) {
+	s.offsetTable.put(s.hash(str), offset)
+	if s.offsetTable.rehashNeeded() {
+		s.rehash()
+	}
+}
+
 func (s *Stringids) Add(str string) uint32 {
 	offset, err := s.GetOffset(str)
 	if err != nil {
 		offset = s.writeToWal(str)
-		s.offsetTable.put(s.hash(str), offset)
-		if s.offsetTable.rehashNeeded() {
-			s.rehash()
-		}
+		s.storeOffset(str, offset)
 	}
 	return offset
 }
 
-func (s *Stringids) StrAtOffset(offset uint32) string {
+func (s *Stringids) StrAtOffset(offset uint32) (string, error) {
 	var size uint16
 	ba := make([]byte, 2)
-	s.wal.ReadAt(ba, int64(offset))
+	_, e := s.wal.ReadAt(ba, int64(offset))
+	if e != nil {
+		return "", e
+	}
 	reader := bytes.NewReader(ba)
 	binary.Read(reader, binary.LittleEndian, &size)
 	ba = make([]byte, size)
 	offset += 2
 	s.wal.ReadAt(ba, int64(offset))
-	return string(ba)
+	return string(ba), nil
 }
 
 func (s *Stringids) GetOffset(str string) (uint32, error) {
 	node := s.offsetTable.get(s.hash(str))
 	for node != nil {
-		tstr := s.StrAtOffset(node.offset)
+		tstr, _ := s.StrAtOffset(node.offset)
 		if tstr == str {
-			fmt.Println("found")
 			return node.offset, nil
 		}
 		node = node.next

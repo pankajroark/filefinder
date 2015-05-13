@@ -82,8 +82,8 @@ func (s *Server) Init() {
 	s.roots = make([]string, 0)
 	s.roots = append(s.roots, "/Users/pankajg/workspace/source/science")
 	s.roots = append(s.roots, "/Users/pankajg/workspace/source/birdcage")
-	err := s.ReadIndex()
 	s.stringids = NewStringids(StringidsPath)
+	err := s.ReadIndex()
 	if err != nil {
 		s.Index()
 	}
@@ -142,7 +142,8 @@ func (s *Server) findCandidates(fuzz string, idx map[string][]uint32) []string {
 	cands := make([]string, 0)
 	for cand, count := range candsSeen {
 		if count > 2 {
-			cands = append(cands, s.stringids.StrAtOffset(cand))
+			pathstr, _ := s.stringids.StrAtOffset(cand)
+			cands = append(cands, pathstr)
 		}
 	}
 	return cands
