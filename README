@@ -1,0 +1,18 @@
+Features:
+Figure out how to reduce the index size
+Give id to every file, store ids in index
+  - two files, one ids, other index
+  - always load ids first
+  - for every new file always check and create and id if needed.
+
+How to avoid reindexing everything everytime
+  Can we benefit from git?
+  How about storing a tree and keep track of mod times of each directory, that way many dirs would be avoided
+    ^ will be very complex
+
+Storage on index can be make incremental as well.
+  - store deletions as new changes, never mutate the existing, except for compactions
+
+Keep track of visited files / more important files and consider them more valueable
+
+With every file we basically need to store more information.
