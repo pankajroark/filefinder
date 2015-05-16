@@ -25,22 +25,6 @@ func (s *Server) Roots() []string {
 	return s.roots
 }
 
-func mergeIndices(idx1, idx2 map[string][]uint32) map[string][]uint32 {
-	indices := make([]map[string][]uint32, 0)
-	indices = append(indices, idx1)
-	indices = append(indices, idx2)
-
-	newIdx := make(map[string][]uint32)
-	for _, idx := range indices {
-		for trigram, paths := range idx {
-			for _, path := range paths {
-				newIdx[trigram] = append(newIdx[trigram], path)
-			}
-		}
-	}
-	return newIdx
-}
-
 func (s *Server) StoreIndex() {
 	b := new(bytes.Buffer)
 	e := gob.NewEncoder(b)
