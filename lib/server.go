@@ -21,6 +21,10 @@ type Server struct {
 	stringids *Stringids
 }
 
+func (s *Server) Roots() []string {
+	return s.roots
+}
+
 func mergeIndices(idx1, idx2 map[string][]uint32) map[string][]uint32 {
 	indices := make([]map[string][]uint32, 0)
 	indices = append(indices, idx1)
