@@ -67,12 +67,13 @@ func (s *Server) Init() {
 
 func (s *Server) Index() {
 	fmt.Printf("indexing %s\n", s.roots[0])
-	s.idx = mergeIndices(s.idx, s.index(s.roots[0]))
+	s.idx = MergeIndices(s.idx, s.index(s.roots[0]))
 	for i := 1; i < len(s.roots); i++ {
 		fmt.Printf("indexing %s\n", s.roots[i])
 		newIdx := s.index(s.roots[i])
-		s.idx = mergeIndices(s.idx, newIdx)
+		s.idx = MergeIndices(s.idx, newIdx)
 	}
+	fmt.Printf("Total number of trigrams: %d", len(s.idx))
 	s.StoreIndex()
 }
 

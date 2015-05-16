@@ -1,7 +1,6 @@
 package lib
 
 import "sort"
-import "fmt"
 
 func MergeSortedIntArray(xs, ys []uint32) []uint32 {
 	i := 0
@@ -41,7 +40,7 @@ func (a UInt32ByValue) Len() int           { return len(a) }
 func (a UInt32ByValue) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a UInt32ByValue) Less(i, j int) bool { return a[i] < a[j] }
 
-func mergeIndices(idx1, idx2 map[string][]uint32) map[string][]uint32 {
+func MergeIndices(idx1, idx2 map[string][]uint32) map[string][]uint32 {
 	indices := make([]map[string][]uint32, 0)
 	indices = append(indices, idx1)
 	indices = append(indices, idx2)

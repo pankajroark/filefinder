@@ -9,11 +9,13 @@ import (
 	"time"
 )
 
+import _ "net/http/pprof"
+
 // todo instead of polling, listen to filesystem events using watchman or sth
-const indexEveryMinutes = 10
+const indexEverySeconds = 600
 
 func scheduleIndex(s *lib.Server) {
-	ticker := time.NewTicker(indexEveryMinutes * time.Minute)
+	ticker := time.NewTicker(indexEverySeconds * time.Second)
 
 	go func() {
 		for {
@@ -39,5 +41,10 @@ func main() {
 	http.HandleFunc("/index", lib.CreateIndexHander(&serv))
 	http.HandleFunc("/addroot", lib.CreateAddRootHandler(&serv))
 	scheduleIndex(&serv)
+	/*
+		go func() {
+			log.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
+	*/
 	log.Fatal(http.ListenAndServe(":"+*port, nil))
 }
