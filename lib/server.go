@@ -9,23 +9,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 )
 
 const IndexPath = "/Users/pankajg/.pathsearchindex"
 const StringidsPath = "/Users/pankajg/.pathstringids"
-
-type candscor struct {
-	cand  string
-	score int
-}
-
-type ByScore []candscor
-
-func (a ByScore) Len() int           { return len(a) }
-func (a ByScore) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByScore) Less(i, j int) bool { return a[i].score < a[j].score }
 
 type Server struct {
 	idx       map[string][]uint32
@@ -125,7 +113,7 @@ func (s *Server) index(path string) map[string][]uint32 {
 
 func (s *Server) FindMatches(word string) []string {
 	candidates := s.findCandidates(word, s.idx)
-	return uptoN(rank(candidates, word), 10)
+	return match(candidates, word)
 }
 
 func (s *Server) findCandidates(fuzz string, idx map[string][]uint32) []string {
@@ -153,34 +141,6 @@ func score(cand, fuzz string) int {
 	lscore := WeightedDistance(strings.ToLower(fuzz), strings.ToLower(cand))
 	//fmt.Printf("candidate: %s, word: %s, score: %d\n", cand, fuzz, lscore)
 	return lscore
-}
-
-func rank(cands []string, fuzz string) []string {
-	// assign a score to each candidate
-	// sort by them
-	candscores := make([]candscor, 0)
-	for _, cand := range cands {
-		basecand := filepath.Base(cand)
-		score := score(basecand, fuzz)
-		cs := candscor{cand: cand, score: score}
-		//fmt.Println(cs)
-		candscores = append(candscores, cs)
-	}
-	sort.Sort(ByScore(candscores))
-	ret := make([]string, 0)
-	for _, cs := range candscores {
-		//fmt.Println(cs)
-		ret = append(ret, cs.cand)
-	}
-	return ret
-}
-
-func uptoN(slice []string, n int) []string {
-	if len(slice) > n {
-		return slice[:n]
-	} else {
-		return slice
-	}
 }
 
 func CreateQueryHandler(s *Server) http.HandlerFunc {
