@@ -17,9 +17,20 @@ func (a ByScore) Len() int           { return len(a) }
 func (a ByScore) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByScore) Less(i, j int) bool { return a[i].score < a[j].score }
 
+// todo return a clone
+func reverse(ss []string) {
+	l := len(ss)
+	for i, j := 0, l-1; i < j; i, j = i+1, j-1 {
+		ss[i], ss[j] = ss[j], ss[i]
+	}
+}
+
+// Query will have the reverse form of the bath
+// i.e. filequery/dir
 func match(cands []string, query string) []string {
 	qparts := strings.Split(query, "/")
-	qfilepart := qparts[len(qparts)-1]
+	//qfilepart := qparts[len(qparts)-1]
+	qfilepart := qparts[0]
 	baseExtractor := func(path string) string {
 		return filepath.Base(path)
 	}
@@ -30,7 +41,10 @@ func match(cands []string, query string) []string {
 		identityExtractor := func(path string) string {
 			return path
 		}
-		top = rank(top, query, identityExtractor)
+		// note that qparts is modified here
+		reverse(qparts)
+		revQuery := strings.Join(qparts, "/")
+		top = rank(top, revQuery, identityExtractor)
 	}
 	// Pick smaller number from the large set based on full match
 	return uptoN(top, 10)
